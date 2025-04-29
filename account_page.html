@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Page</title>
+    <style>
+        /* Basic Reset and Body Styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #A6C0FE, #F68084);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Container Styling */
+        .container {
+            width: 450px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Header */
+        h1 {
+            color: #005CFF;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+
+        h2 {
+            color: #444;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+
+        /* Button Styling */
+        button {
+            background: linear-gradient(135deg, #005CFF, #007BFF);
+            color: #FFFFFF;
+            border: none;
+            padding: 12px 25px;
+            margin: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #0043CC, #0066DD);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Form Styling */
+        #withdrawForm, #depositForm {
+            margin-top: 15px;
+            display: none;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        input[type="number"] {
+            width: 90%;
+            padding: 12px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"]:focus {
+            border-color: #005CFF;
+            outline: none;
+            box-shadow: 0 0 8px rgba(0, 92, 255, 0.3);
+        }
+
+        /* Account Details */
+        #accountDetails {
+            margin-top: 20px;
+            display: none;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+            text-align: left;
+        }
+
+        #accountDetails h3 {
+            color: #005CFF;
+            margin-bottom: 10px;
+        }
+
+        #accountDetails p {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        /* Animations */
+        #accountDetails,
+        #withdrawForm,
+        #depositForm {
+            animation: fadeIn 0.6s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to Your Account</h1>
+        <h2 id="accountBalance">Balance: $100</h2>
+
+        <button id="checkBalanceBtn">Check Balance</button>
+        <button id="withdrawBtn">Withdraw Money</button>
+        <button id="depositBtn">Deposit Money</button>
+        <button id="checkAccountDetailsBtn">Check Account Details</button>
+
+        <div id="withdrawForm">
+            <input type="number" id="withdrawAmount" placeholder="Amount to withdraw">
+            <button id="withdrawSubmitBtn">Withdraw</button>
+        </div>
+
+        <div id="depositForm">
+            <input type="number" id="depositAmount" placeholder="Amount to deposit">
+            <button id="depositSubmitBtn">Deposit</button>
+        </div>
+
+        <!-- Account Details Section -->
+        <div id="accountDetails">
+            <h3>Account Details</h3>
+            <p id="cardNumber"></p>
+            <p id="expiryDate"></p>
+            <p id="accountNumber"></p>
+            <p id="createdAt"></p>
+            <p id="cvc"></p>
+            <p id="emaill"></p>
+        </div>
+    </div>
+
+    <script>
+        const userId = sessionStorage.getItem('user_id');
+
+        // Fetch account balance
+        document.getElementById('checkBalanceBtn').addEventListener('click', () => {
+            fetch(`http://127.0.0.1:5001/account_balance/${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('accountBalance').innerText = `Balance: $${data.balance}`;
+            });
+        });
+
+        // Show withdraw form
+        document.getElementById('withdrawBtn').addEventListener('click', () => {
+            document.getElementById('withdrawForm').style.display = 'block';
+        });
+
+        // Withdraw money
+        document.getElementById('withdrawSubmitBtn').addEventListener('click', () => {
+            const amount = document.getElementById('withdrawAmount').value;
+            fetch(`http://127.0.0.1:5001/withdraw/${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount })
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message));
+        });
+
+        // Show deposit form
+        document.getElementById('depositBtn').addEventListener('click', () => {
+            document.getElementById('depositForm').style.display = 'block';
+        });
+
+        // Deposit money
+        document.getElementById('depositSubmitBtn').addEventListener('click', () => {
+            const amount = document.getElementById('depositAmount').value;
+            fetch(`http://127.0.0.1:5001/deposit/${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount })
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message));
+        });
+
+        // Show account details
+        document.getElementById('checkAccountDetailsBtn').addEventListener('click', () => {
+            fetch(`http://127.0.0.1:5001/account_details/${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.card_number) {
+                    document.getElementById('cardNumber').innerText = `Card Number: ${data.card_number}`;
+                    document.getElementById('expiryDate').innerText = `Expiry Date: ${data.expiry_date}`;
+                    document.getElementById('accountNumber').innerText = `Account Number: ${data.account_number}`;
+                    document.getElementById('createdAt').innerText = `Account Created At: ${data.created_at}`;
+                    document.getElementById('cvc').innerText = `CVC: ${data.cvc}`;
+                    document.getElementById('emaill').innerText = `Email: ${data.email}`;
+                    document.getElementById('accountDetails').style.display = 'block';
+                } else {
+                    alert('Could not fetch account details');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

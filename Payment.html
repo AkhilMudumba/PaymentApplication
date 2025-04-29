@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make a Payment</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        /* General styling for the entire page */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    padding: 20px;
+    max-width: 600px;
+    margin: auto;
+}
+
+h1, h2 {
+    text-align: center;
+    color: #4a90e2;
+}
+
+input, button {
+    margin: 10px 0;
+    padding: 12px;
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #4a90e2;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #357abd;
+}
+
+/* Stripe Card Element styling */
+#card-element {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: white;
+    margin-top: 10px;
+}
+
+/* Balance section styling */
+#balance {
+    margin: 20px 0;
+    font-weight: bold;
+    font-size: 18px;
+    color: #333;
+}
+
+/* Transaction list styling */
+#transactionList {
+    list-style-type: none;
+    padding: 0;
+    margin: 20px 0;
+    background-color: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+}
+
+#transactionList li {
+    padding: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+#transactionList li:last-child {
+    border-bottom: none;
+}
+
+/* Total sent and received styling */
+#transactionList p {
+    padding: 10px;
+    font-weight: bold;
+    color: #4a90e2;
+    text-align: center;
+}
+
+/* Media query for smaller screens */
+@media (max-width: 600px) {
+    body {
+        padding: 15px;
+    }
+
+    input, button {
+        font-size: 14px;
+    }
+
+    h1, h2 {
+        font-size: 24px;
+    }
+}
+
+    </style>
+</head>
+<body>
+
+    <h1>Payment Page</h1>
+
+    <!-- Payment Form -->
+    <h2>Make a Payment</h2>
+    <form id="paymentForm">
+        <input type="text" id="recipientName" placeholder="Recipient Name" required>
+        <input type="number" id="paymentAmount" placeholder="Amount" required>
+        <div id="card-element"></div>
+        <button type="submit" id="payButton">Pay Now</button>
+    </form>
+
+    <!-- Balance Check Section -->
+    <h2>Check Your Balance</h2>
+    <button id="checkBalanceBtn">Check Balance</button>
+    <p id="balance"></p>
+
+    <!-- Transaction History -->
+    <h2>Transaction History</h2>
+    <button id="viewTransactionsBtn">View Transactions</button>
+    <ul id="transactionList"></ul>
+
+    <script>
+        const stripe = Stripe('pk_test_51QJmQoRtGFQ6ofjmCjYQgNSyRaDkPX4lMyzurbHAy4TIJndRWiOuAwg7RcqJbiv6WwFHAGfSKz6sawyTvCpaUSan00486tspGC');
+        const elements = stripe.elements();
+        const card = elements.create('card');
+        card.mount('#card-element');
+
+        // Fetch server IP and save to sessionStorage if not already set
+        let serverIP = sessionStorage.getItem('server_ip') || '127.0.0.1';
+
+        if (!serverIP) {
+            fetch('http://127.0.0.1:5000/server-ip')
+                .then(response => response.json())
+                .then(data => {
+                    serverIP = data.ip;
+                    sessionStorage.setItem('server_ip', serverIP);
+                })
+                .catch(error => {
+                    console.error('Failed to fetch server IP:', error);
+                });
+        }
+
+
+    // Payment form submission
+    document.getElementById('paymentForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const recipientName = document.getElementById('recipientName').value;
+        const amount = document.getElementById('paymentAmount').value;
+
+        // Get user ID and name from sessionStorage
+        const userId = sessionStorage.getItem('user_id');
+        const userName = sessionStorage.getItem('user_name');
+
+        if (!userId) {
+            alert('Please log in first');
+            return;
+        }
+
+        stripe.createToken(card).then(function (result) {
+            if (result.error) {
+                alert(result.error.message);
+            } else {
+                const token = result.token.id;
+                const cardLastFour = result.token.card.last4; // Capture the last four digits of the card
+
+                fetch(`http://${serverIP}:5000/pay`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        amount: amount,
+                        token: token,
+                        recipient_name: recipientName,
+                        sender_name: userName, // Use logged-in user's name as sender
+                        card_number: cardLastFour // Send the last four digits of the card number
+                    })
+                })
+                .then(response => response.json())
+                .then(data => alert(data.message))
+                .catch(error => alert('Error: ' + error));
+            }
+        });
+    });
+
+    // Check balance functionality
+    document.getElementById('checkBalanceBtn').addEventListener('click', function () {
+        const userId = sessionStorage.getItem('user_id');
+
+        if (!userId) {
+            alert('Please log in first');
+            return;
+        }
+
+        fetch(`http://${serverIP}:5000/balance/${userId}`, {
+            method: 'GET',
+            headers: { 
+                'Accept': 'application/json' // Adding Accept header to ensure server responds with JSON
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.balance !== undefined) {
+                document.getElementById('balance').textContent = `Your Balance: $${data.balance}`;
+            } else {
+                alert('Error fetching balance: ' + data.message);
+            }
+        })
+        .catch(error => alert('Error: ' + error));
+    });
+
+        // Check balance functionality
+        document.getElementById('checkBalanceBtn').addEventListener('click', function () {
+            const userId = sessionStorage.getItem('user_id');
+
+            if (!userId) {
+                alert('Please log in first');
+                return;
+            }
+
+            fetch(`http://${serverIP}:5000/balance/${userId}`, {
+                method: 'GET',
+                headers: { 
+                    'Accept': 'application/json' // Adding Accept header to ensure server responds with JSON
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.balance !== undefined) {
+                    document.getElementById('balance').textContent = `Your Balance: $${data.balance}`;
+                } else {
+                    alert('Error fetching balance: ' + data.message);
+                }
+            })
+            .catch(error => alert('Error: ' + error));
+        });
+
+        // View transaction history
+        document.getElementById('viewTransactionsBtn').addEventListener('click', function () {
+            const userId = sessionStorage.getItem('user_id');
+
+            if (!userId) {
+                alert('Please log in first');
+                return;
+            }
+
+            fetch(`http://${serverIP}:5000/transactions/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const transactionList = document.getElementById('transactionList');
+                    transactionList.innerHTML = '';  // Clear previous transaction list
+
+                    // Display each transaction
+                    data.transactions.forEach(txn => {
+                        const li = document.createElement('li');
+                        li.textContent = `Sender: ${txn.sender_name}, Recipient: ${txn.recipient_name}, Amount: $${txn.amount}, Status: ${txn.status}, Date: ${txn.transaction_date}`;
+                        transactionList.appendChild(li);
+                    });
+
+                    // Display total sent and received
+                    const totals = document.createElement('p');
+                    totals.innerHTML = `<strong>Total Sent:</strong> $${data.total_sent} <br> <strong>Total Received:</strong> $${data.total_received}`;
+                    transactionList.appendChild(totals);
+
+                })
+                .catch(error => alert('Error: ' + error));
+        });
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment App</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+        }
+        input, button {
+            margin: 10px 0;
+            padding: 10px;
+            width: 100%;
+        }
+        #card-element {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Welcome to Payment App</h1>
+
+    <!-- Sign Up Form -->
+    <h2>Sign Up</h2>
+    <form id="signupForm">
+        <input type="text" id="signupUsername" placeholder="Username" required>
+        <input type="password" id="signupPassword" placeholder="Password" required>
+        <button type="submit">Sign Up</button>
+    </form>
+
+    <!-- Login Form -->
+    <h2>Login</h2>
+    <form id="loginForm">
+        <input type="text" id="loginUsername" placeholder="Username" required>
+        <input type="password" id="loginPassword" placeholder="Password" required>
+        <button type="submit">Login</button>
+    </form>
+
+    <!-- Payment Form -->
+    <h2>Make a Payment</h2>
+    <form id="paymentForm">
+        <input type="text" id="recipientName" placeholder="Recipient Name" required>
+        <input type="number" id="paymentAmount" placeholder="Amount" required>
+        <div id="card-element"></div>
+        <button type="submit" id="payButton">Pay Now</button>
+    </form>
+
+    <!-- Transaction History -->
+    <h2>Transaction History</h2>
+    <button id="viewTransactionsBtn">View Transactions</button>
+    <ul id="transactionList"></ul>
+
+    <script>
+        const stripe = Stripe('pk_test_51QJmQoRtGFQ6ofjmCjYQgNSyRaDkPX4lMyzurbHAy4TIJndRWiOuAwg7RcqJbiv6WwFHAGfSKz6sawyTvCpaUSan00486tspGC');  // Replace with your actual publishable key
+        const elements = stripe.elements();
+        const card = elements.create('card');
+        card.mount('#card-element');
+
+        const signupForm = document.getElementById('signupForm');
+        const loginForm = document.getElementById('loginForm');
+        const paymentForm = document.getElementById('paymentForm');
+        const viewTransactionsBtn = document.getElementById('viewTransactionsBtn');
+        const transactionList = document.getElementById('transactionList');
+
+        let serverIP = '127.0.0.1'; // Default to localhost for fallback
+
+        // Get the server IP dynamically
+        fetch('http://127.0.0.1:5000/server-ip') // Change this if needed based on network setup
+            .then(response => response.json())
+            .then(data => {
+                serverIP = data.ip;
+                console.log('Server IP: ' + serverIP); // For debugging
+            })
+            .catch(error => {
+                console.error('Failed to fetch server IP:', error);
+            });
+
+        // Sign up form submission
+        signupForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const username = document.getElementById('signupUsername').value;
+            const password = document.getElementById('signupPassword').value;
+
+            fetch(`http://${serverIP}:5000/signup`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            }).then(response => response.json())
+              .then(data => alert(data.message))
+              .catch(error => alert('Error: ' + error));
+        });
+
+        // Login form submission
+        loginForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            fetch(`http://${serverIP}:5000/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            }).then(response => response.json())
+              .then(data => alert(data.message))
+              .catch(error => alert('Error: ' + error));
+        });
+
+        // Payment form submission
+        paymentForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const recipientName = document.getElementById('recipientName').value;
+            const amount = document.getElementById('paymentAmount').value;
+
+            stripe.createToken(card).then(function (result) {
+                if (result.error) {
+                    alert(result.error.message);
+                } else {
+                    const token = result.token.id;
+                    const userId = 1;  // Replace with actual user ID from login
+
+                    fetch(`http://${serverIP}:5000/pay`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            amount: amount,
+                            token: token,
+                            recipient_name: recipientName
+                        })
+                    }).then(response => response.json())
+                      .then(data => alert(data.message))
+                      .catch(error => alert('Error: ' + error));
+                }
+            });
+        });
+
+        // View transaction history
+        viewTransactionsBtn.addEventListener('click', function () {
+            const userId = 1;  // Replace with actual user ID
+
+            fetch(`http://${serverIP}:5000/transactions/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    transactionList.innerHTML = '';
+                    data.transactions.forEach(txn => {
+                        const li = document.createElement('li');
+                        li.textContent = `Transaction ID: ${txn.transaction_id}, Amount: ${txn.amount}`;
+                        transactionList.appendChild(li);
+                    });
+                })
+                .catch(error => alert('Error: ' + error));
+        });
+    </script>
+
+</body>
+</html>

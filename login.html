@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment App | User Authentication</title>
+    <link rel="stylesheet" href="/Payment_app/Template/style.css">
+
+    <style>
+                /* Global Style */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Form Container */
+        .form-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+            text-align: center;
+        }
+        input[type="text"],
+        input[type="password"],
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .toggle-section {
+            color: #007bff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Additional Styling for Dynamic Display */
+        #signupSection {
+            display: none;
+        }
+    </style>
+
+</head>
+<body>
+    <div class="form-container">
+        <h1>Welcome to Payment App</h1>
+
+        <!-- Bank Account Check Form -->
+        <h2>Check Bank Account</h2>
+        <form id="bankCheckForm">
+            <input type="text" id="bankAccountNumber" placeholder="Bank Account Number" required>
+            <input type="password" id="bankPassword" placeholder="Bank Password" required>
+            <button type="submit">Verify Bank Account</button>
+        </form>
+
+        <!-- Sign Up Form -->
+        <div id="signupSection">
+            <h2>Create Your Account</h2>
+            <form id="signupForm">
+                <input type="text" id="signupUsername" placeholder="Username" required>
+                <input type="password" id="signupPassword" placeholder="Password" required>
+                <input type="text" id="signupAccountNumber" placeholder="Bank Account Number" required readonly>
+                <button type="submit">Sign Up</button>
+            </form>
+            <p class="toggle-section" id="showLoginForm">Already have an account? Log in here</p>
+        </div>
+
+        <!-- Login Form -->
+        <div id="loginSection">
+            <h2>Login</h2>
+            <form id="loginForm">
+                <input type="text" id="loginUsername" placeholder="Username" required>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+            <p class="toggle-section" id="showSignupForm">Don't have an account? Sign up here</p>
+        </div>
+    </div>
+
+    <script>
+        let serverIP = '127.0.0.1';
+
+        // Toggle visibility for forms
+        document.getElementById('showSignupForm').addEventListener('click', () => {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('signupSection').style.display = 'block';
+        });
+        document.getElementById('showLoginForm').addEventListener('click', () => {
+            document.getElementById('signupSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+        });
+
+        // Bank Account Verification form submission
+        document.getElementById('bankCheckForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const bankAccountNumber = document.getElementById('bankAccountNumber').value;
+            const bankPassword = document.getElementById('bankPassword').value;
+
+            fetch(`http://${serverIP}:5000/check-bank-account`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bank_account_number: bankAccountNumber, bank_password: bankPassword })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Bank account verified') {
+                    alert('Bank account verified! You can now create your app account.');
+                    document.getElementById('signupSection').style.display = 'block';
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('signupAccountNumber').value = bankAccountNumber;
+                } else {
+                    alert(data.message);
+                    document.getElementById('signupSection').style.display = 'none';
+                }
+            })
+            .catch(error => alert('Error: ' + error));
+        });
+
+        // Sign up form submission
+        document.getElementById('signupForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const username = document.getElementById('signupUsername').value;
+            const password = document.getElementById('signupPassword').value;
+            const accountNumber = document.getElementById('signupAccountNumber').value;
+
+            fetch(`http://${serverIP}:5000/signup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, account_number: accountNumber })
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message))
+            .catch(error => alert('Error: ' + error));
+        });
+
+        // Login form submission
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            fetch(`http://${serverIP}:5000/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Login successful!') {
+                    alert(data.message);
+                    sessionStorage.setItem('user_id', data.user_id);
+                    window.location.href = 'Payment.html';
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => alert('Error: ' + error));
+        });
+    </script>
+</body>
+</html>
